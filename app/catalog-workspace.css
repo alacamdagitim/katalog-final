@@ -65,12 +65,12 @@
 .catalog-workspace .trade-active-filters button svg{width:12px;height:12px;flex:none}
 .catalog-workspace .trade-active-filters .catalog-clear-filters{border:0;background:transparent;text-decoration:underline;text-underline-offset:3px}
 .catalog-product-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;margin-top:0;border:1px solid #dde0e2;background:#dde0e2}
-.catalog-workspace .trade-row{display:flex;min-width:0;min-height:330px;flex-direction:column;padding:14px;background:#fff;transition:background .12s}
+.catalog-workspace .trade-row{display:flex;min-width:0;min-height:310px;flex-direction:column;padding:14px;background:#fff;transition:background .12s}
 .catalog-workspace .trade-row:hover{background:#fcfcfb}
 .catalog-workspace .trade-row.in-cart{background:#fffaf0;box-shadow:inset 0 -3px 0 var(--catalog-accent)}
 .catalog-workspace .trade-product{display:flex;min-width:0;flex:1;flex-direction:column;align-items:stretch;gap:10px;text-align:left}
-.catalog-workspace .trade-image{position:relative;display:grid;place-items:center;width:100%;height:148px;padding:6px;background:#fff;overflow:hidden}
-.catalog-workspace .trade-image img{width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply}
+.catalog-workspace .trade-image{position:relative;display:grid;place-items:center;flex:0 0 128px;width:100%;height:128px;padding:6px;box-sizing:border-box;background:#fff;overflow:hidden}
+.catalog-workspace .trade-image img{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px);max-width:none;max-height:none;padding:0;object-fit:contain;mix-blend-mode:multiply}
 .catalog-workspace .trade-image>svg{width:36px;height:36px;color:#b4b9bd;stroke-width:1.3}
 .catalog-workspace .trade-image>span{position:absolute;left:6px;bottom:6px;padding:4px 6px;background:#3b4044e8;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
 .catalog-workspace .trade-product-text{min-width:0}
@@ -230,9 +230,10 @@
  .catalog-workspace .trade-active-filters{gap:5px;margin:9px 0 11px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
  .catalog-workspace .trade-active-filters button{flex:none;min-height:28px;font-size:9px}
  .catalog-product-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-inline:-1px}
- .catalog-workspace .trade-row{min-height:254px;padding:10px}
+ .catalog-workspace .trade-row{min-height:244px;padding:10px}
  .catalog-workspace .trade-product{gap:7px}
- .catalog-workspace .trade-image{height:98px;padding:4px}
+ .catalog-workspace .trade-image{flex-basis:92px;height:92px;padding:4px}
+ .catalog-workspace .trade-image img{inset:4px;width:calc(100% - 8px);height:calc(100% - 8px)}
  .catalog-workspace .catalog-product-brand{margin-bottom:4px;font-size:8px}
  .catalog-workspace .trade-product-text h2{min-height:36px;font-size:12px;line-height:1.45}
  .catalog-workspace .catalog-product-meta{margin-top:4px;font-size:9px}
@@ -274,7 +275,7 @@
  .catalog-quick-types{margin-inline:-9px}
  .catalog-inline-filters{margin-inline:-9px;padding-inline:9px}
  .catalog-workspace .trade-row{padding:8px}
- .catalog-workspace .trade-image{height:98px}
+ .catalog-workspace .trade-image{height:92px}
  .catalog-workspace .trade-product-text h2{font-size:11px}
  .catalog-workspace .trade-price>strong{font-size:13px}
  .catalog-product-sheet .product-detail-overview{grid-template-columns:105px minmax(0,1fr);gap:13px}
