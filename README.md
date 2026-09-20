@@ -60,11 +60,15 @@ GitHub'a kod göndermek yerel fiyatları, katalog seçimlerini veya gizli ayarla
 
 `npm run password:hash` komutu parolayı ekranda göstermeden sorar ve yalnızca hash değerini üretir. Düz parolayı Git'e veya Netlify ortam değişkenlerine koymayın.
 
+Firma sahibinin isteğiyle `lib/admin-account.server.ts` dosyasında yalnız sunucuda kullanılan bir varsayılan hesap ve salt içeren scrypt parola özeti tanımlıdır; düz parola bulunmaz. Her iki yönetici ortam değişkeni de hiç tanımlı değilse bu hesap kullanılır. Değişkenlerden biri tanımlanmışsa ikisinin de geçerli olması gerekir; eksik veya boş ayarlar varsayılan hesaba geri dönmez. Örnek ortam dosyasındaki boş yönetici alanları da girişi kapatır: ya ikisini doldurun ya da varsayılan hesabı kullanmak için ikisini kaldırın.
+
+Açık depodaki parola özeti çevrimdışı parola tahminlerine açık olduğundan canlı kullanımda güçlü bir parola ve özel ortam ayarları tercih edilmelidir. `SESSION_SECRET` hiçbir zaman koda eklenmez ve hash'ten türetilmez: en az 32 karakterlik bağımsız rastgele değer sunucu ortamında tanımlanmadan giriş çalışmaz. Hesabı değiştirdiğinizde mevcut oturumları da iptal etmek için bu anahtarı yenileyin.
+
 ## Netlify ortam değişkenleri
 
 - `SHOPIFY_SHOP_DOMAIN`: `dx0nin-1q.myshopify.com`
-- `ADMIN_EMAIL`: fiyat yönetimi hesabı
-- `ADMIN_PASSWORD_HASH`: `npm run password:hash` çıktısı
+- `ADMIN_EMAIL`: fiyat yönetimi hesabı (varsayılan hesabı değiştirmek için)
+- `ADMIN_PASSWORD_HASH`: `npm run password:hash` çıktısı (`ADMIN_EMAIL` ile birlikte)
 - `SESSION_SECRET`: en az 32 karakterlik rastgele gizli değer
 - `APP_URL`: canlı HTTPS adresi
 

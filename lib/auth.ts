@@ -2,6 +2,7 @@ import {cookies,headers} from 'next/headers';
 import {createHmac,timingSafeEqual} from 'node:crypto';
 export const sessionCookie='alacam_admin';
 type Session={email:string;exp:number};
+export function sessionConfigured(){return (process.env.SESSION_SECRET||'').length>=32}
 function secret(){const value=process.env.SESSION_SECRET||'';if(value.length<32)throw new Error('SESSION_SECRET en az 32 karakter olmalı.');return value}
 function sign(value:string){return createHmac('sha256',secret()).update(value).digest('base64url')}
 function safeEqual(a:string,b:string){const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y)}
