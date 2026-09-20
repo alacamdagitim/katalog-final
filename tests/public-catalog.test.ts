@@ -7,8 +7,10 @@ import {join} from 'node:path';
 // Capture all import-time development paths only inside this test-owned folder.
 const originalCwd=process.cwd(),originalFetch=globalThis.fetch;
 const originalNetlify=process.env.NETLIFY,originalSite=process.env.NETLIFY_SITE_ID,originalRuntimeSite=process.env.SITE_ID;
+const originalVercel=process.env.VERCEL,originalVercelEnv=process.env.VERCEL_ENV;
 const sandbox=await mkdtemp(join(tmpdir(),'approved-catalog-test-'));
 delete process.env.NETLIFY;delete process.env.NETLIFY_SITE_ID;delete process.env.SITE_ID;
+delete process.env.VERCEL;delete process.env.VERCEL_ENV;
 process.chdir(sandbox);
 const {publicCatalog,publicCatalogFilters,liveQuote}=await import('../lib/live-catalog');
 const {setPrices}=await import('../lib/prices');
@@ -18,6 +20,8 @@ after(async()=>{
  if(originalNetlify===undefined)delete process.env.NETLIFY;else process.env.NETLIFY=originalNetlify;
  if(originalSite===undefined)delete process.env.NETLIFY_SITE_ID;else process.env.NETLIFY_SITE_ID=originalSite;
  if(originalRuntimeSite===undefined)delete process.env.SITE_ID;else process.env.SITE_ID=originalRuntimeSite;
+ if(originalVercel===undefined)delete process.env.VERCEL;else process.env.VERCEL=originalVercel;
+ if(originalVercelEnv===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=originalVercelEnv;
  await rm(sandbox,{recursive:true,force:true});
 });
 beforeEach(async()=>{

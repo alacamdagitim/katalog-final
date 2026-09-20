@@ -8,13 +8,16 @@ import {tmpdir} from 'node:os';
 // entering a test-owned directory; never read or restore the owner's live file.
 const originalCwd=process.cwd();
 const originalNetlify=process.env.NETLIFY,originalSite=process.env.NETLIFY_SITE_ID,originalRuntimeSite=process.env.SITE_ID;
+const originalVercel=process.env.VERCEL,originalVercelEnv=process.env.VERCEL_ENV;
 let testDirectory:string;
-before(async()=>{testDirectory=await mkdtemp(join(tmpdir(),'alacam-catalog-test-'));delete process.env.NETLIFY;delete process.env.NETLIFY_SITE_ID;delete process.env.SITE_ID;process.chdir(testDirectory);});
+before(async()=>{testDirectory=await mkdtemp(join(tmpdir(),'alacam-catalog-test-'));delete process.env.NETLIFY;delete process.env.NETLIFY_SITE_ID;delete process.env.SITE_ID;delete process.env.VERCEL;delete process.env.VERCEL_ENV;process.chdir(testDirectory);});
 after(async()=>{
  process.chdir(originalCwd);
  if(originalNetlify===undefined)delete process.env.NETLIFY;else process.env.NETLIFY=originalNetlify;
  if(originalSite===undefined)delete process.env.NETLIFY_SITE_ID;else process.env.NETLIFY_SITE_ID=originalSite;
  if(originalRuntimeSite===undefined)delete process.env.SITE_ID;else process.env.SITE_ID=originalRuntimeSite;
+ if(originalVercel===undefined)delete process.env.VERCEL;else process.env.VERCEL=originalVercel;
+ if(originalVercelEnv===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=originalVercelEnv;
  if(testDirectory)await rm(testDirectory,{recursive:true,force:true});
 });
 

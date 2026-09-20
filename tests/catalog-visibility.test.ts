@@ -9,7 +9,9 @@ import type {VisibilityBlobStore} from '../lib/catalog-visibility';
 const originalCwd = process.cwd();
 const sandbox = await mkdtemp(join(tmpdir(), 'catalog-visibility-test-'));
 const oldNetlify = process.env.NETLIFY, oldSite = process.env.NETLIFY_SITE_ID, oldRuntimeSite = process.env.SITE_ID;
+const oldVercel=process.env.VERCEL,oldVercelEnv=process.env.VERCEL_ENV;
 delete process.env.NETLIFY; delete process.env.NETLIFY_SITE_ID; delete process.env.SITE_ID;
+delete process.env.VERCEL;delete process.env.VERCEL_ENV;
 process.chdir(sandbox);
 const visibility = await import('../lib/catalog-visibility');
 after(async () => {
@@ -17,6 +19,8 @@ after(async () => {
   if (oldNetlify === undefined) delete process.env.NETLIFY; else process.env.NETLIFY = oldNetlify;
   if (oldSite === undefined) delete process.env.NETLIFY_SITE_ID; else process.env.NETLIFY_SITE_ID = oldSite;
   if (oldRuntimeSite === undefined) delete process.env.SITE_ID; else process.env.SITE_ID = oldRuntimeSite;
+  if(oldVercel===undefined)delete process.env.VERCEL;else process.env.VERCEL=oldVercel;
+  if(oldVercelEnv===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=oldVercelEnv;
   await rm(sandbox, {recursive: true, force: true});
 });
 

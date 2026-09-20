@@ -2,7 +2,9 @@ import {getStore} from '@netlify/blobs';
 import {mkdir,readFile,writeFile,rename} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {join} from 'node:path';
-import {isNetlifyRuntime} from './storage-runtime';
+import {configuredStorageProvider} from './storage-runtime';
+import {vercelCatalogMap} from './vercel-catalog-store';
+import {HttpError} from './http';
 
 export type PriceRecord={price:number;updatedAt:string};
 export type PriceUpdate={id:string;price:number|null};
@@ -125,10 +127,14 @@ export function createBlobPriceRepository(store:PriceBlobStore){
 }
 
 function blobPrices(){return createBlobPriceRepository(getStore({name:'catalog-prices',consistency:'strong',fetch:checkedBlobFetch}));}
-async function allRecords(){return isNetlifyRuntime()?blobPrices().records():localPrices();}
+const vercelPrices=()=>vercelCatalogMap('prices',priceRecord);
+async function allRecords(){
+ const provider=configuredStorageProvider();
+ return provider==='vercel'?vercelPrices().entries():provider==='netlify'?blobPrices().records():localPrices();
+}
 
 export async function getPrices(ids:string[]){
- if(isNetlifyRuntime())return blobPrices().selected([...new Set(ids)]);
+ if(configuredStorageProvider()==='netlify')return blobPrices().selected([...new Set(ids)]);
  const all=await allRecords(),result:Record<string,number|null>={};
  for(const id of new Set(ids))result[id]=all[id]?.price??null;
  return result;
@@ -151,7 +157,19 @@ export async function setPrices(rows:PriceUpdate[]):Promise<PriceUpdateResult>{
   valid.set(row.id,row.price);
  }
  if(!valid.size)return result;
- if(!isNetlifyRuntime()){
+ const provider=configuredStorageProvider();
+ if(provider==='vercel'){
+  const updatedAt=new Date().toISOString();
+  try{
+   await vercelPrices().update(new Map([...valid].map(([id,price])=>[id,price===null?null:{price,updatedAt}])));
+   result.updated.push(...valid.keys());
+  }catch(error){
+   if(error instanceof HttpError)throw error;
+   for(const id of valid.keys())result.failed.push({id,error:'Fiyat kaydedilemedi. Yeniden deneyin.'});
+  }
+  return result;
+ }
+ if(provider==='local'){
   const operation=localWrite.catch(()=>{}).then(async()=>{
    const all=await localPrices(),updatedAt=new Date().toISOString();
    for(const [id,price] of valid){if(price===null)delete all[id];else all[id]={price,updatedAt};}

@@ -3,7 +3,8 @@ import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {join} from 'node:path';
 import {HttpError} from './http';
-import {isNetlifyRuntime} from './storage-runtime';
+import {configuredStorageProvider} from './storage-runtime';
+import {vercelCatalogMap} from './vercel-catalog-store';
 
 type Approval = {visible: true; updatedAt: string};
 type Approvals = Record<string, Approval>;
@@ -128,21 +129,30 @@ export function createVisibilityRepository(store: VisibilityBlobStore) {
 }
 
 const blobVisibility = () => createVisibilityRepository(getStore({name: 'catalog-visibility', consistency: 'strong'}));
+const vercelVisibility=()=>vercelCatalogMap('visibility',approved);
 
 export async function getVisibleIds(): Promise<string[]> {
-  return isNetlifyRuntime() ? blobVisibility().visibleIds() : Object.keys(await localApprovals()).sort();
+  const provider=configuredStorageProvider();
+  return provider==='vercel'?Object.keys(await vercelVisibility().entries()).sort():provider==='netlify'?blobVisibility().visibleIds():Object.keys(await localApprovals()).sort();
 }
 
 export async function getVisibility(ids: string[]): Promise<Record<string, boolean>> {
-  if (isNetlifyRuntime()) return blobVisibility().selected(ids);
-  const records = await localApprovals();
+  const provider=configuredStorageProvider();
+  if (provider==='netlify') return blobVisibility().selected(ids);
+  const records = provider==='vercel'?await vercelVisibility().entries():await localApprovals();
   return Object.fromEntries([...new Set(ids)].map(id => [id, VARIANT_ID.test(id) && approved(records[id])]));
 }
 
 let localWrite: Promise<unknown> = Promise.resolve();
 export async function setVisibility(ids: string[], visible: boolean): Promise<VisibilityResult> {
   validateInput(ids, visible);
-  if (isNetlifyRuntime()) {
+  const provider=configuredStorageProvider();
+  if(provider==='vercel'){
+    const updatedAt=new Date().toISOString();
+    await vercelVisibility().update(new Map(ids.map(id=>[id,visible?{visible:true as const,updatedAt}:null])));
+    return {updated:[...ids],failed:[]};
+  }
+  if (provider==='netlify') {
     try { return await blobVisibility().update(ids, visible); }
     catch { return {updated: [], failed: ids.map(id => ({id, error: 'Yayın durumu kaydedilemedi. Yeniden deneyin.'}))}; }
   }

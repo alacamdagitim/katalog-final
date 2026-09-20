@@ -1,12 +1,13 @@
 'use client';
 
 import {useState} from 'react';
-import {Check, ChevronLeft, ChevronRight} from 'lucide-react';
+import {ArrowRight, Check, ChevronLeft, ChevronRight, LoaderCircle} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {money} from '@/lib/model';
 import {previewBulkPrices, type BulkPriceItem, type BulkPriceOperation, type BulkPricePreview} from '@/lib/admin-bulk-prices';
 import {PRICE_BATCH_SIZE, type PriceBatchResult} from '@/lib/price-excel';
+import {readApiResponse} from '@/lib/client-response';
 
 type Props = {
   items: BulkPriceItem[];
@@ -16,8 +17,8 @@ type Props = {
   onSaved: (prices: Record<string, number>) => void;
 };
 const labels: Record<BulkPriceOperation, string> = {
-  'percent-up': 'Yüzde zam', 'percent-down': 'Yüzde indirim',
-  'amount-up': 'TL ekle', 'amount-down': 'TL düş', set: 'Aynı fiyatı ata',
+  'percent-up': 'Yüzde artır (%)', 'percent-down': 'Yüzde indir (%)',
+  'amount-up': 'Tutar ekle (TL)', 'amount-down': 'Tutar düş (TL)', set: 'Sabit fiyat belirle',
 };
 const PAGE_SIZE = 30;
 
@@ -52,7 +53,7 @@ export default function AdminBulkPrices({items, scopeLabel, disabled = false, on
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({rows: batch.map(row => ({row: rowNumbers.get(row.id), id: row.id, price: row.next}))}),
         });
-        const result = await response.json() as PriceBatchResult & {error?: string};
+        const result = await readApiResponse<PriceBatchResult & {error?: string}>(response, true);
         for (const id of result.updated || []) {
           const row = batch.find(item => item.id === id);
           if (row?.next !== null && row?.next !== undefined) { acknowledged.add(id); written[id] = row.next; }
@@ -69,21 +70,21 @@ export default function AdminBulkPrices({items, scopeLabel, disabled = false, on
     }
   }
 
-  return <section className="admin-bulk" aria-label="Seçili ürünlere toplu fiyat işlemi">
+  return <section className="admin-bulk" aria-label="Seçili ürün seçeneklerine toplu fiyat işlemi">
     <header className="admin-bulk-heading"><div><h2>Toplu fiyat düzenle</h2><p>{scopeLabel} · {items.length.toLocaleString('tr-TR')} seçenek seçili</p></div></header>
     <fieldset className="admin-bulk-controls" disabled={busy}>
       <label>İşlem<select value={operation} onChange={event => {setOperation(event.target.value as BulkPriceOperation); clearPreview();}}>{Object.entries(labels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <label>{operation.startsWith('percent') ? 'Oran (%)' : 'Tutar (TL)'}<Input value={value} inputMode="decimal" onChange={event => {setValue(event.target.value); clearPreview();}} placeholder={operation.startsWith('percent') ? 'Örn. 5' : 'Örn. 100,00'}/></label>
-      <Button variant="outline" onClick={createPreview}>Değişiklikleri önizle</Button>
+      <Button variant="outline" onClick={createPreview}>Önizle<ArrowRight/></Button>
     </fieldset>
-    <p className="admin-bulk-note">{operation === 'set' ? 'Fiyatı olmayan ürünlere de aynı özel katalog fiyatı atanır.' : 'Özel fiyatı olmayan ürünler atlanır. Sonuçlar kuruşa yuvarlanır.'}</p>
+    <p className="admin-bulk-note">{items.length.toLocaleString('tr-TR')} seçili seçenek · {operation === 'set' ? 'Fiyatı olmayanlara da bu fiyat atanır.' : 'Özel fiyatı olmayanlar atlanır; sonuçlar kuruşa yuvarlanır.'} Kaydetmeden önce değişiklikleri görebilirsiniz.</p>
     {error && <p className="price-excel-error" role="alert">{error}</p>}
     {preview && !preview.error && <div className="admin-bulk-preview">
-      <div className="admin-bulk-summary" role="status"><span>{changes.length.toLocaleString('tr-TR')} fiyat güncellenecek</span><span>{excluded.length.toLocaleString('tr-TR')} atlanacak</span>{!!invalid.length && <strong>{invalid.length} geçersiz sonuç</strong>}{!!saved.size && <span><Check/>{saved.size.toLocaleString('tr-TR')} kaydedildi</span>}</div>
+      <div className="admin-bulk-summary" role="status"><span><b>{changes.length.toLocaleString('tr-TR')}</b> fiyat değişikliği</span><span>{excluded.length.toLocaleString('tr-TR')} atlanacak</span>{!!invalid.length && <strong>{invalid.length} geçersiz sonuç</strong>}{!!saved.size && <span className="aw-success-text"><Check/>{saved.size.toLocaleString('tr-TR')} kaydedildi</span>}</div>
       {!!invalid.length && <p className="price-excel-error">Sınır dışı fiyatlar var. İşlem değerini düzeltmeden fiyatlar uygulanamaz.</p>}
-      <div className="price-excel-table-wrap"><table className="price-excel-table"><thead><tr><th>Ürün</th><th>Mevcut fiyat</th><th>Yeni fiyat</th><th>Durum</th></tr></thead><tbody>{rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(row => <tr key={row.id} data-invalid={row.status === 'error' || !!failed[row.id]}><td><b>{row.title}</b></td><td>{row.current === null ? 'Fiyat yok' : money(row.current)}</td><td>{row.next === null ? '—' : money(row.next)}</td><td>{failed[row.id] || (saved.has(row.id) ? 'Kaydedildi' : row.reason || 'Hazır')}</td></tr>)}</tbody></table></div>
+      <div className="price-excel-table-wrap" role="region" aria-label="Fiyat değişiklikleri önizlemesi" tabIndex={0}><table className="price-excel-table"><thead><tr><th scope="col">Ürün seçeneği</th><th scope="col">Mevcut fiyat</th><th scope="col">Yeni fiyat</th><th scope="col">Durum</th></tr></thead><tbody>{rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(row => <tr key={row.id} data-invalid={row.status === 'error' || !!failed[row.id]}><td><b>{row.title}</b></td><td>{row.current === null ? 'Fiyat yok' : money(row.current)}</td><td><strong>{row.next === null ? '—' : money(row.next)}</strong></td><td>{failed[row.id] || (saved.has(row.id) ? 'Kaydedildi' : row.reason || 'Değişecek')}</td></tr>)}</tbody></table></div>
       {rows.length > PAGE_SIZE && <div className="price-excel-pagination"><Button size="icon" variant="outline" aria-label="Önceki fiyat önizleme sayfası" disabled={!page} onClick={() => setPage(current => current - 1)}><ChevronLeft/></Button><span>{page + 1} / {Math.ceil(rows.length / PAGE_SIZE)}</span><Button size="icon" variant="outline" aria-label="Sonraki fiyat önizleme sayfası" disabled={(page + 1) * PAGE_SIZE >= rows.length} onClick={() => setPage(current => current + 1)}><ChevronRight/></Button></div>}
-      <div className="price-excel-apply"><p>{applying ? `${saved.size.toLocaleString('tr-TR')} / ${changes.length.toLocaleString('tr-TR')} fiyat kaydedildi. Bu sayfayı açık tutun.` : changes.length > 0 && !pending.length ? 'Seçili fiyat değişiklikleri kaydedildi.' : 'Önizlemeyi kontrol edin. Kaydettiğinizde yalnızca özel katalog fiyatları değişir.'}</p><Button disabled={busy || !!invalid.length || !pending.length} onClick={apply}>{applying ? 'Kaydediliyor…' : saved.size ? `Kalan ${pending.length.toLocaleString('tr-TR')} fiyatı kaydet` : `${changes.length.toLocaleString('tr-TR')} fiyatı kaydet`}</Button></div>
+      <div className="price-excel-apply"><p role="status">{applying ? `${saved.size.toLocaleString('tr-TR')} / ${changes.length.toLocaleString('tr-TR')} fiyat kaydedildi. Bu sayfayı açık tutun.` : changes.length > 0 && !pending.length ? 'Seçili fiyat değişiklikleri kaydedildi.' : 'Yalnızca özel katalog fiyatları değişir. Shopify fiyatlarına dokunulmaz.'}</p><Button disabled={busy || !!invalid.length || !pending.length} onClick={apply}>{applying ? <><LoaderCircle className="aw-spin"/>Kaydediliyor…</> : changes.length > 0 && !pending.length ? <><Check/>Kaydedildi</> : saved.size ? `Kalan ${pending.length.toLocaleString('tr-TR')} fiyatı kaydet` : `${changes.length.toLocaleString('tr-TR')} fiyatı kaydet`}</Button></div>
     </div>}
   </section>;
 }
