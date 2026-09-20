@@ -1,11 +1,10 @@
 'use client';
-import {useCallback,useEffect,useId,useRef,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {ArrowUpRight,Check,ChevronLeft,ChevronRight,LoaderCircle,Menu,Minus,Package,Plus,Search,ShieldCheck,ShoppingCart,SlidersHorizontal,Trash2,X} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Sheet,SheetContent,SheetDescription,SheetHeader,SheetTitle} from '@/components/ui/sheet';
-import FilterPicker from './catalog-filter-picker';
 import ProductDetail from './product-detail';
 import type {CatalogItem,CatalogPage} from '@/lib/live-catalog';
 import {money} from '@/lib/model';
@@ -18,7 +17,6 @@ type Filters={vendor:string;type:string;tag:string;stock:string;minPrice:string;
 type Facets={vendors:string[];types:string[];tags:string[];limits?:{vendors:boolean;types:boolean;tags:boolean}};
 const emptyFilters:Filters={vendor:'',type:'',tag:'',stock:'',minPrice:'',maxPrice:''};
 const logo='https://alacamdagitim.com/cdn/shop/files/LOGO_DENEME_SON_865056f4-5f9d-4701-a37e-f1d9be001d1a.webp?v=1774724316&width=400';
-const normalize=(value:string)=>value.toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i');
 const request=async<T=any>(url:string,init?:RequestInit):Promise<T>=>{
  return readApiResponse<T>(await fetch(url,init));
 };
@@ -30,12 +28,8 @@ function Quantity({value,onChange,label}:{value:number;onChange:(value:number)=>
  </div>;
 }
 function FilterPanel({filters,facets,loading,error,onChange,onClear}:{filters:Filters;facets:Facets;loading:boolean;error:string;onChange:(next:Partial<Filters>)=>void;onClear:()=>void}){
- const [typeSearch,setTypeSearch]=useState(''),[expanded,setExpanded]=useState(false);
  const [min,setMin]=useState(filters.minPrice),[max,setMax]=useState(filters.maxPrice),[priceError,setPriceError]=useState('');
- const stockName=useId();
  useEffect(()=>{setMin(filters.minPrice);setMax(filters.maxPrice)},[filters.minPrice,filters.maxPrice]);
- const matching=facets.types.filter(item=>normalize(item).includes(normalize(typeSearch)));
- const types=expanded||typeSearch?matching:matching.slice(0,8);
  const applyPrice=(event:React.FormEvent)=>{
   event.preventDefault();
   const a=parsePrice(min),b=parsePrice(max);
@@ -43,30 +37,17 @@ function FilterPanel({filters,facets,loading,error,onChange,onClear}:{filters:Fi
   if(a.price!==null&&b.price!==null&&a.price>b.price){setPriceError('En düşük fiyat, en yüksek fiyattan büyük olamaz.');return}
   setPriceError('');onChange({minPrice:a.price===null?'':String(a.price/100),maxPrice:b.price===null?'':String(b.price/100)});
  };
+ const options=(items:string[],selected:string)=><>{selected&&!items.includes(selected)&&<option value={selected}>{selected}</option>}{items.map(item=><option key={item} value={item}>{item}</option>)}</>;
  return <div className="catalog-filter-panel catalog-workspace-filters">
-  <div className="catalog-filter-heading"><h2>Filtreler</h2><button type="button" onClick={onClear}>Temizle</button></div>
-  <section className="catalog-filter-section"><FilterPicker label="Marka" placeholder="Tüm markalar" value={filters.vendor} options={facets.vendors} onChange={vendor=>onChange({vendor,type:'',tag:''})} loading={loading}/>{facets.limits?.vendors&&<p className="catalog-filter-hint">Daha fazla marka için ürün aramasını daraltın.</p>}</section>
-  <section className="catalog-filter-section">
-   <h3>Ürün türü</h3>
-   <div className="catalog-type-search"><Search/><input aria-label="Ürün türlerinde ara" placeholder="Tür ara" value={typeSearch} onChange={e=>setTypeSearch(e.target.value)}/></div>
-   <div className="catalog-type-options" aria-label="Ürün türleri">
-    <button type="button" className={!filters.type?'is-selected':''} aria-pressed={!filters.type} onClick={()=>onChange({type:'',tag:''})}><span>Tüm türler</span>{!filters.type&&<Check/>}</button>
-    {filters.type&&!types.includes(filters.type)&&<button type="button" className="is-selected" aria-pressed="true" onClick={()=>onChange({type:'',tag:''})}><span>{filters.type}</span><Check/></button>}
-    {types.map(type=><button type="button" key={type} className={filters.type===type?'is-selected':''} aria-pressed={filters.type===type} onClick={()=>onChange({type:filters.type===type?'':type,tag:''})}><span>{type}</span>{filters.type===type&&<Check/>}</button>)}
-   </div>
-   {matching.length>8&&!typeSearch&&<button className="catalog-show-more" type="button" onClick={()=>setExpanded(!expanded)}>{expanded?'Daha az göster':'Tüm türleri göster ('+matching.length+')'}</button>}
-   {!matching.length&&<p className="catalog-filter-hint">{loading?'Türler yükleniyor…':'Bu aramada tür bulunamadı.'}</p>}
-  </section>
-  <section className="catalog-filter-section"><FilterPicker label="Etiket" placeholder="Tüm etiketler" value={filters.tag} options={facets.tags} onChange={tag=>onChange({tag})} loading={loading}/>{facets.limits?.tags&&<p className="catalog-filter-hint">Daha fazla etiket için marka seçin veya aramanızı daraltın.</p>}</section>
-  <fieldset className="catalog-filter-section catalog-stock-options"><legend>Stok durumu</legend>
-   {[['','Tümü'],['available','Satışa açık'],['unavailable','Tükenenler']].map(([value,label])=><label key={value}><input type="radio" name={stockName} value={value} checked={filters.stock===value} onChange={()=>onChange({stock:value})}/><span>{label}</span></label>)}
-  </fieldset>
-  <form className="catalog-filter-section catalog-price-filter" onSubmit={applyPrice}>
-   <h3>Fiyat aralığı <span>TL</span></h3>
-   <div><input aria-label="En düşük katalog fiyatı" inputMode="decimal" placeholder="En az" value={min} onChange={e=>setMin(e.target.value)}/><span>–</span><input aria-label="En yüksek katalog fiyatı" inputMode="decimal" placeholder="En çok" value={max} onChange={e=>setMax(e.target.value)}/></div>
-   <button type="submit">Uygula</button>
-   <p className="catalog-filter-hint">Yalnızca katalog fiyatı belirlenmiş ürünler.</p>{priceError&&<p className="customer-error" role="alert">{priceError}</p>}
-  </form>
+  <div className="catalog-filter-heading"><div><h2>Ürünleri filtrele</h2><p>Aradığınız grubu hızlıca daraltın.</p></div><button type="button" onClick={onClear}>Tümünü temizle</button></div>
+  <div className="catalog-filter-fields">
+   <label className="catalog-select-field"><span>Marka</span><select value={filters.vendor} disabled={loading&&!facets.vendors.length} onChange={event=>onChange({vendor:event.target.value,type:'',tag:''})}><option value="">Tüm markalar</option>{options(facets.vendors,filters.vendor)}</select></label>
+   <label className="catalog-select-field"><span>Ürün türü</span><select value={filters.type} disabled={loading&&!facets.types.length} onChange={event=>onChange({type:event.target.value,tag:''})}><option value="">Tüm ürün türleri</option>{options(facets.types,filters.type)}</select></label>
+   <label className="catalog-select-field"><span>Etiket</span><select value={filters.tag} disabled={loading&&!facets.tags.length} onChange={event=>onChange({tag:event.target.value})}><option value="">Tüm etiketler</option>{options(facets.tags,filters.tag)}</select></label>
+   <label className="catalog-select-field"><span>Stok</span><select value={filters.stock} onChange={event=>onChange({stock:event.target.value})}><option value="">Tüm ürünler</option><option value="available">Satışa açık</option><option value="unavailable">Tükenenler</option></select></label>
+   <form className="catalog-price-filter" onSubmit={applyPrice}><span>Fiyat aralığı</span><div><input aria-label="En düşük katalog fiyatı" inputMode="decimal" placeholder="En az" value={min} onChange={e=>setMin(e.target.value)}/><i>–</i><input aria-label="En yüksek katalog fiyatı" inputMode="decimal" placeholder="En çok" value={max} onChange={e=>setMax(e.target.value)}/><button type="submit">Uygula</button></div>{priceError&&<p className="customer-error" role="alert">{priceError}</p>}</form>
+  </div>
+  {(facets.limits?.vendors||facets.limits?.tags)&&<p className="catalog-filter-hint">Daha fazla seçenek için arama alanını kullanarak sonuçları daraltabilirsiniz.</p>}
   {error&&<p className="catalog-filter-hint" role="status">{error}</p>}
  </div>;
 }
@@ -132,8 +113,9 @@ export default function CustomerCatalog({initial,initialError=''}:{initial:Catal
   filters.type&&{label:filters.type,clear:{type:'',tag:''}},
   filters.tag&&{label:filters.tag,clear:{tag:''}},
   filters.stock&&{label:filters.stock==='available'?'Satışa açık':'Tükenenler',clear:{stock:''}},
-  (filters.minPrice||filters.maxPrice)&&{label:(filters.minPrice?money(Math.round(Number(filters.minPrice)*100)):'0 TL')+' – '+(filters.maxPrice?money(Math.round(Number(filters.maxPrice)*100)):'Üst sınır yok'),clear:{minPrice:'',maxPrice:''}}
+ (filters.minPrice||filters.maxPrice)&&{label:(filters.minPrice?money(Math.round(Number(filters.minPrice)*100)):'0 TL')+' – '+(filters.maxPrice?money(Math.round(Number(filters.maxPrice)*100)):'Üst sınır yok'),clear:{minPrice:'',maxPrice:''}}
  ].filter(Boolean) as {label:string;clear:Partial<Filters>}[];
+ const quickTypes=facets.types.slice(0,8);
 
  return <div className={'customer-site trade-catalog catalog-workspace'+(lines.length?' has-cart':'')}>
   <a className="catalog-skip-link" href="#catalog-products">Ürünlere geç</a>
@@ -146,16 +128,17 @@ export default function CustomerCatalog({initial,initialError=''}:{initial:Catal
    </header>
   </div>
   <main className="customer-main catalog-layout">
-   <aside className="catalog-sidebar" aria-label="Katalog filtreleri">{filterPanel}</aside>
    <section className="customer-results" id="catalog-products" ref={resultRef}>
     <div className="catalog-breadcrumb"><span>Dijital katalog</span><ChevronRight/><span>{filters.vendor||'Tüm ürünler'}</span>{filters.type&&<><ChevronRight/><span>{filters.type}</span></>}</div>
-    <div className="trade-result-bar"><div><h1>{query?'“'+query+'” için sonuçlar':filters.type||filters.vendor||'Ürün kataloğu'}</h1><p>Ürünleri seçin, sipariş listenizi oluşturun.</p></div></div>
-    <div className="catalog-results-toolbar"><button className="catalog-filter-toggle" type="button" onClick={()=>setFilterOpen(true)}><SlidersHorizontal/>Filtreler{filterCount>0&&<b>{filterCount}</b>}</button><span role="status">{loading?<><LoaderCircle className="catalog-loading-icon"/>Ürünler yükleniyor…</>:<>Bu sayfada <strong>{data.items.length.toLocaleString('tr-TR')}</strong> ürün seçeneği</>}</span><span className="catalog-page-label">Sayfa {page}</span></div>
+    <div className="trade-result-bar"><div><h1>{query?'“'+query+'” için sonuçlar':filters.type||filters.vendor||'Ürün kataloğu'}</h1><p>Marka ve ürün grupları arasında hızlıca gezin, sipariş listenizi oluşturun.</p></div></div>
+    <nav className="catalog-quick-types" aria-label="Popüler ürün türleri"><button type="button" className={!filters.type?'is-active':''} onClick={()=>changeFilters({type:'',tag:''})}>Tüm ürünler</button>{quickTypes.map(type=><button type="button" key={type} className={filters.type===type?'is-active':''} onClick={()=>changeFilters({type:filters.type===type?'':type,tag:''})}>{type}</button>)}</nav>
+    <div className="catalog-results-toolbar"><button className={'catalog-filter-toggle'+(filterOpen?' is-open':'')} type="button" aria-expanded={filterOpen} aria-controls="catalog-inline-filters" onClick={()=>setFilterOpen(open=>!open)}><SlidersHorizontal/>Filtrele{filterCount>0&&<b>{filterCount}</b>}<ChevronRight/></button><span role="status">{loading?<><LoaderCircle className="catalog-loading-icon"/>Ürünler yükleniyor…</>:<><strong>{data.items.length.toLocaleString('tr-TR')}</strong> ürün gösteriliyor</>}</span><span className="catalog-page-label">Sayfa {page}</span></div>
+    <div id="catalog-inline-filters" className={'catalog-inline-filters'+(filterOpen?' is-open':'')}>{filterPanel}<button className="catalog-filter-close" type="button" onClick={()=>setFilterOpen(false)}>Filtreleri kapat</button></div>
     {(chips.length>0||query)&&<div className="trade-active-filters">{query&&<button onClick={()=>search('')} aria-label="Aramayı temizle">Arama: {query}<X/></button>}{chips.map((chip,index)=><button key={index+chip.label} onClick={()=>changeFilters(chip.clear)} aria-label={chip.label+' filtresini kaldır'}>{chip.label}<X/></button>)}{filterCount>0&&<button className="catalog-clear-filters" onClick={clearFilters}>Filtreleri temizle</button>}</div>}
-    {error?<div className="empty catalog-empty" role="alert"><Package/><h2>Ürünler yüklenemedi</h2><p>{error}</p><Button onClick={()=>load()}>Yeniden dene</Button></div>:!data.items.length?<div className="empty catalog-empty">{loading?<LoaderCircle className="catalog-loading-icon"/>:<Package/>}<h2>{loading?'Ürünler yükleniyor…':data.hasNextPage?'Bu sayfada eşleşme bulunamadı':!query.trim()&&!filterCount?'Katalog hazırlanıyor':'Aramanızla eşleşen ürün yok'}</h2><p>{loading?'Sonuçlar birkaç saniye içinde burada görünecek.':data.hasNextPage?'Diğer ürünlere bakmak için sonraki sayfaya geçebilirsiniz.':!query.trim()&&!filterCount?'Kataloğa eklenen ürünler burada listelenecek.':'Aramanızı değiştirebilir veya filtreleri temizleyebilirsiniz.'}</p>{!loading&&(filterCount>0||query)&&<Button variant="outline" onClick={()=>{setQuery('');changeFilters(emptyFilters);if(!filterCount)search('')}}>Tüm ürünleri göster</Button>}</div>:<div className="trade-list" aria-busy={loading}><div className="catalog-list-head" aria-hidden="true"><span>Ürün bilgileri</span><span>Birim fiyat / Adet</span></div>{data.items.map(product=>{
+    {error?<div className="empty catalog-empty" role="alert"><Package/><h2>Ürünler yüklenemedi</h2><p>{error}</p><Button onClick={()=>load()}>Yeniden dene</Button></div>:!data.items.length?<div className="empty catalog-empty">{loading?<LoaderCircle className="catalog-loading-icon"/>:<Package/>}<h2>{loading?'Ürünler yükleniyor…':data.hasNextPage?'Bu sayfada eşleşme bulunamadı':!query.trim()&&!filterCount?'Katalog hazırlanıyor':'Aramanızla eşleşen ürün yok'}</h2><p>{loading?'Sonuçlar birkaç saniye içinde burada görünecek.':data.hasNextPage?'Diğer ürünlere bakmak için sonraki sayfaya geçebilirsiniz.':!query.trim()&&!filterCount?'Kataloğa eklenen ürünler burada listelenecek.':'Aramanızı değiştirebilir veya filtreleri temizleyebilirsiniz.'}</p>{!loading&&(filterCount>0||query)&&<Button variant="outline" onClick={()=>{setQuery('');changeFilters(emptyFilters);if(!filterCount)search('')}}>Tüm ürünleri göster</Button>}</div>:<div className="trade-list catalog-product-grid" aria-busy={loading}>{data.items.map(product=>{
      const line=lines.find(item=>item.product.id===product.id);
      return <article className={'trade-row'+(line?' in-cart':'')} key={product.id}>
-      <button className="trade-product" onClick={()=>setDetail(product)} aria-label={product.title+' ürün detayını aç'}><div className="trade-image">{product.image?<img src={product.image} alt="" loading="lazy"/>:<Package/>}</div><div className="trade-product-text"><p className="catalog-product-brand">{product.vendor||'Alaçam Dağıtım'}</p><h2>{product.title}</h2><p className="catalog-product-meta">{product.type&&<span>{product.type}</span>}<span className={'catalog-stock'+(!product.available?' is-unavailable':'')}>{product.available?'Satışa açık':'Tükendi'}</span></p></div></button>
+      <button className="trade-product" onClick={()=>setDetail(product)} aria-label={product.title+' ürün detayını aç'}><div className="trade-image">{product.image?<img src={product.image} alt="" loading="lazy"/>:<Package/>}{!product.available&&<span>Tükendi</span>}</div><div className="trade-product-text"><p className="catalog-product-brand">{product.vendor||'Alaçam Dağıtım'}</p><h2>{product.title}</h2><p className="catalog-product-meta">{product.type&&<span>{product.type}</span>}</p></div></button>
       <div className="trade-purchase"><div className="trade-price"><strong>{product.catalogPrice===null?'Fiyat sorunuz':money(product.catalogPrice)}</strong><small>{line?<><Check/>Sepette {line.quantity.toLocaleString('tr-TR')} adet</>:'Birim fiyat'}</small></div>{line?<div className="trade-row-actions"><Quantity value={line.quantity} label={product.title} onChange={value=>quantity(product.id,value)}/><Button size="icon" variant="ghost" aria-label={product.title+' sepetten çıkar'} onClick={()=>remove(product.id)}><Trash2/></Button></div>:<Button className="trade-add" disabled={!product.available} onClick={()=>add(product)}>{product.available?<><Plus/>Sepete ekle</>:'Tükendi'}</Button>}</div>
      </article>;
     })}</div>}
@@ -163,7 +146,6 @@ export default function CustomerCatalog({initial,initialError=''}:{initial:Catal
     <p className="customer-disclaimer">Fiyat, stok, KDV ve teslimat sipariş öncesinde teyit edilir.</p>
    </section>
   </main>
-  <Sheet open={filterOpen} onOpenChange={setFilterOpen}><SheetContent side="left" className="catalog-filter-sheet catalog-workspace-sheet"><SheetHeader><SheetTitle>Filtreler</SheetTitle><SheetDescription>Aradığınız ürüne daha hızlı ulaşın.</SheetDescription></SheetHeader><div className="catalog-filter-sheet-body">{filterPanel}</div><div className="catalog-filter-sheet-footer"><Button variant="outline" onClick={clearFilters}>Temizle</Button><Button onClick={()=>setFilterOpen(false)}>Ürünleri göster<ChevronRight/></Button></div></SheetContent></Sheet>
   <Sheet open={menu} onOpenChange={setMenu}><SheetContent side="left" className="customer-drawer catalog-workspace-sheet"><SheetHeader><SheetTitle>Alaçam Dağıtım</SheetTitle><SheetDescription>Dijital ürün kataloğu</SheetDescription></SheetHeader><nav className="customer-menu"><button className="is-current" onClick={()=>setMenu(false)}><Package/>Ürün kataloğu<ChevronRight/></button><button onClick={()=>{setMenu(false);setCartOpen(true)}}><ShoppingCart/>Sepetim<span>{count.toLocaleString('tr-TR')}</span></button><div className="nav-divider"/><p className="catalog-menu-label">YÖNETİM</p><Link href="/giris"><ShieldCheck/>Yönetici girişi<ArrowUpRight/></Link></nav></SheetContent></Sheet>
   {detail&&<ProductDetail key={detail.id} product={detail} onClose={()=>setDetail(null)} onAdd={amount=>{add(detail,amount);setDetail(null)}} onFilter={filter=>{setQuery('');changeFilters({...emptyFilters,...filter});setDetail(null)}}/>}
   <Sheet open={cartOpen} onOpenChange={setCartOpen}><SheetContent className="customer-cart-sheet catalog-workspace-sheet"><SheetHeader><SheetTitle>Sepetim <span className="catalog-cart-count">{lines.length} seçenek</span></SheetTitle><SheetDescription>Sipariş listenizi hazırlayın ve WhatsApp’tan paylaşın.</SheetDescription></SheetHeader><div className="customer-cart-body">{!lines.length?<div className="empty catalog-empty"><ShoppingCart/><h2>Sepetiniz henüz boş</h2><p>Katalogdan ürün ekleyerek başlayın.</p><Button onClick={()=>setCartOpen(false)}>Ürünlere dön</Button></div>:<>{lines.map(line=><article className="customer-cart-line" key={line.product.id}><h3>{line.product.title}</h3><small>Birim fiyat: {line.product.catalogPrice===null?'Fiyat sorunuz':money(line.product.catalogPrice)}</small><div><Quantity value={line.quantity} label={line.product.title} onChange={value=>quantity(line.product.id,value)}/><strong>{line.product.catalogPrice===null?'Fiyat sorunuz':money(line.product.catalogPrice*line.quantity)}</strong><Button size="icon" variant="ghost" aria-label={line.product.title+' sepetten çıkar'} onClick={()=>remove(line.product.id)}><Trash2/></Button></div></article>)}<div className="customer-total"><span>{missing?'Fiyatı belli ürünler':'Liste toplamı'}<small>{count.toLocaleString('tr-TR')} adet</small></span><strong>{anyPriced?money(total):'Fiyat istenecek'}</strong></div>{missing&&<p className="catalog-cart-note">Fiyatı belirtilmeyen ürünler için ayrıca teklif istenecektir.</p>}<label>Adınız veya firma adınız<Input value={name} autoComplete="organization" placeholder="Örn. Alaçam Kafe" onChange={e=>{setName(e.target.value);invalidateQuote()}}/></label><label>Sipariş notu <span className="catalog-optional">(isteğe bağlı)</span><textarea value={note} placeholder="Teslimat veya ürünlerle ilgili notunuz" onChange={e=>{setNote(e.target.value);invalidateQuote()}}/></label><Button className="catalog-prepare-order" disabled={preparing} onClick={prepare}>{preparing?<><LoaderCircle className="catalog-loading-icon"/>Güncel fiyatlar kontrol ediliyor…</>:'Sipariş listesini oluştur'}</Button><p className="catalog-cart-note">Bu işlem ödeme veya kesin sipariş oluşturmaz.</p>{quote&&<div className="customer-share"><p><Check/>Sipariş listeniz hazır.</p><a className="login-button" target="_blank" rel="noopener noreferrer" href={'https://wa.me/?text='+encodeURIComponent(quote)}>WhatsApp’ta paylaş<ArrowUpRight/></a><Button variant="outline" onClick={copy}>Listeyi kopyala</Button></div>}</>}</div></SheetContent></Sheet>
