@@ -1,9 +1,0 @@
-import {currentMember,HttpError} from '@/lib/server';
-import {readOrder} from '@/lib/orders';
-import {money} from '@/lib/model';
-import {orderNumber,orderStates,taxLabels} from '@/lib/orders-model';
-import PrintButton from './print-button';
-export const dynamic='force-dynamic';
-export default async function OrderPrint({searchParams}:{searchParams:Promise<{id?:string}>}){
- try{const p=await searchParams,u=await currentMember(),o=await readOrder(u,p.id||'');return <main className="print-sheet"><div className="no-print print-controls"><PrintButton/><a href="/yonetim?view=orders">Siparişlere dön</a></div><header><h1>Alaçam Dağıtım</h1><p>Sipariş / teklif listesi · {orderNumber(o.id)}</p></header><section><h2>{o.customer.company||o.customer.name}</h2><p>Müşteri / yetkili: {o.customer.name}{o.customer.phone?' · '+o.customer.phone:''}</p><p>Hazırlayan: {o.actorName} · {new Date(o.createdAt).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'})}</p><p>Durum: {orderStates[o.state]}{o.state==='approved'?' · çalışan tarafından kaydedilen müşteri beyanı':''}</p></section><table><thead><tr><th>Ürün / barkod</th><th>Adet</th><th>Birim fiyat</th><th>Tutar</th></tr></thead><tbody>{o.lines.map(l=><tr key={l.id}><td>{l.title}<small>{l.barcode}</small></td><td>{l.quantity.toLocaleString('tr-TR')}</td><td>{money(l.price)}</td><td>{money(l.quantity*l.price)}</td></tr>)}</tbody></table><div className="print-total">Liste toplamı: <strong>{money(o.total)}</strong></div><p>{taxLabels[o.customer.tax]}</p>{o.customer.note&&<p className="print-note">Not: {o.customer.note}</p>}<footer>Bu belge fatura veya irsaliye değildir. Stok rezervasyonu ve ödeme işlemi yapılmamıştır. Liste, hazırlandığı andaki katalog fiyatlarını içerir.</footer></main>}catch(e){return <main className="login"><h1>Liste açılamadı</h1><p>{e instanceof HttpError?e.message:'Biraz sonra tekrar deneyin.'}</p><a href="/yonetim?view=orders">Kataloğa dön</a></main>}
-}

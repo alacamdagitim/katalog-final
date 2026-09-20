@@ -1,20 +1,18 @@
-import {database as db} from '@/lib/database';
-import {createSession,tokenHash} from '@/lib/auth';
-import {verifyPassword,hashPassword} from '@/lib/password.mjs';
-import {sameOrigin,ok,fail,HttpError,jsonBody} from '@/lib/server';
+import {createSession} from '@/lib/auth';
+import {verifyPassword} from '@/lib/password.mjs';
+import {sameOrigin,ok,fail,HttpError,jsonBody} from '@/lib/http';
 export const runtime='nodejs';
-let dummy:Promise<string>|undefined;
+const attempts=new Map<string,{count:number;resetAt:number}>(),WINDOW=15*60_000,LIMIT=10;
+function rateLimit(email:string){
+ const now=Date.now(),current=attempts.get(email);
+ if(!current||current.resetAt<=now){attempts.set(email,{count:1,resetAt:now+WINDOW});return}
+ current.count+=1;if(current.count>LIMIT)throw new HttpError(429,'Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.');
+}
 export async function POST(req:Request){try{
- sameOrigin(req);const b=await jsonBody(req),email=String(b.email||'').trim().toLowerCase();
- if(email.length>254||typeof b.password!=='string'||b.password.length>256)throw new HttpError(400,'Geçersiz giriş bilgileri.');
- // Persistent per-account and global limits also apply to nonexistent users.
- for(const key of ['login-global','login-'+tokenHash(email)]){
-  const row=await db.prepare('INSERT INTO login_attempts VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN windowStart<? THEN 1 ELSE count+1 END,windowStart=CASE WHEN windowStart<? THEN excluded.windowStart ELSE windowStart END RETURNING count').bind(key,Date.now(),Date.now()-900000,Date.now()-900000).first<any>();
-  if(row.count>(key==='login-global'?300:10))throw new HttpError(429,'Çok fazla deneme. 15 dakika sonra tekrar deneyin.');
- }
- const row=await db.prepare('SELECT m.id,m.active,c.passwordHash FROM members m JOIN credentials c ON c.memberId=m.id WHERE m.email=?').bind(email).first<any>();
- dummy??=hashPassword('dummy-unusable-'+crypto.randomUUID());
- const valid=await verifyPassword(b.password,row?.passwordHash||await dummy);
- if(!valid||!row?.active)throw new HttpError(401,'E-posta veya parola hatalı.');
- await createSession(row.id);return ok({signedIn:true});
+ sameOrigin(req);const b=await jsonBody(req),email=String(b.email||'').trim().toLowerCase(),password=String(b.password||'');
+ const configured=(process.env.ADMIN_EMAIL||'').trim().toLowerCase(),hash=process.env.ADMIN_PASSWORD_HASH||'';
+ if(!configured||!hash)throw new HttpError(503,'Yönetici girişi henüz yapılandırılmadı.');
+ rateLimit(email);const passwordMatches=await verifyPassword(password,hash);
+ if(email!==configured||!passwordMatches)throw new HttpError(401,'E-posta veya parola hatalı.');
+ attempts.delete(email);await createSession(configured);return ok({signedIn:true});
 }catch(e){return fail(e)}}

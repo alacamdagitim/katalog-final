@@ -1,77 +1,81 @@
-# Alaçam Katalog — bağımsız web uygulaması
+# Alaçam Dağıtım Dijital Katalog
 
-Yayın hedefi **Netlify**. Next.js uygulaması, kalıcı libSQL veritabanı ve Shopify bildirimleriyle çalışan görev kuyruğu. ChatGPT oturumuna veya açık tarayıcı sekmesine ihtiyaç duymaz.
+Netlify'da çalışan, Shopify'ı canlı ürün kaynağı olarak kullanan mobil öncelikli toptan katalog.
 
-## Mevcut durum
+## Mimari
 
-- Bu klasör bağımsız geliştirme kopyasıdır. Eski canlı katalog değiştirilmedi; canlı veriler, kullanıcılar ve gizli anahtarlar buraya taşınmadı.
-- Henüz GitHub'a gönderilmedi veya Netlify'a yayınlanmadı. Ücretli hizmet açılmadı.
-- Yerel testlerde Shopify yanıtları taklit edilir. Gerçek Shopify, uzak veritabanı ve Netlify üzerinde uçtan uca kabul testi yayın öncesinde gereklidir.
+- Ürün adı, marka, tür, açıklama, görsel, barkod ve satışa açıklık Shopify Storefront API'den istek anında okunur.
+- Ürünler ayrı bir veritabanına kopyalanmaz; ilk aktarım, kuyruk, zamanlanmış görev ve senkron düğmesi yoktur.
+- Yalnızca Shopify varyasyon kimliğine bağlı özel katalog fiyatı ve katalogda gösterme onayı Netlify Blobs'ta ayrı kayıtlar olarak saklanır.
+- Müşteri kataloğu girişsizdir. Fiyat yönetimi imzalı, HTTP-only oturumla korunur.
+- Sepet tarayıcıda geçicidir. Paylaşım öncesinde fiyatlar sunucudan yeniden okunur ve WhatsApp talep metni hazırlanır.
+- Uygulama Shopify'a yazmaz; ürün bilgilerini ve Shopify fiyatlarını değiştirmez.
+- Ürünler varsayılan olarak katalogda gizlidir. Fiyat girmek otomatik yayınlama değildir; yönetimde ayrıca kataloğa eklemek gerekir. Müşteri sorguları ve sepet paylaşımı sunucuda bu onayla sınırlandırılır.
 
-## İş kuralları
+Shopify'da ilgili satış kanalına yayınlanmayan taslak veya arşivli ürünler Storefront API tarafından gösterilmez. Shopify'daki yayınlanmış bir değişiklik kataloğun sonraki sorgusunda güncel haliyle gelir.
 
-- Müşteri kataloğu girişsizdir. Yalnızca kataloğa seçilmiş, uygun durumdaki ürünler yayımlanır; yönetim ve sipariş kayıtları oturum ve yetki kontrolü gerektirir.
-- Firma sahibi dahil herkes ürünler üzerinde yalnızca **katalog fiyatını** ve **katalogda görünürlüğü** değiştirebilir. Diğer ürün alanlarının kaynağı Shopify'dır. Excel yüklemelerinde de aynı kurallar uygulanır.
-- Shopify ürünlerine veya fiyatlarına yazılmaz. Bağlantı, ürün/stok okuma ve uygulamanın değişiklik bildirim aboneliklerini oluşturmak içindir.
-- Yeni ürünler gizli ve fiyatsız gelir. Eşitleme yerel fiyat ve görünürlük tercihlerini korur. Kaynaktan silinen ürün yerelde arşivlenir; eski sipariş kayıtları silinmez.
-- Kaynak alanlar: ürün/varyasyon adı, marka, tür, etiket, açıklama, barkod, SKU, stok, durum ve ana/varyasyon görseli. Tüm görsel galerisi ve tüm özel Shopify alanları bu sürümün kapsamı değildir.
-- Müşteri sepeti geçicidir; WhatsApp listesini müşteri kendisi gönderir. Bu işlem ödeme veya resmi irsaliye oluşturmaz. Çalışan sipariş akışı ayrı tutulur.
+## Katalog kullanımı
 
-## Yerel kurulum
+- Marka listesi arama yapılmadan açılabilir; tür ve etiket seçenekleri aramaya ve markaya göre daralır. Hafif filtre etiketleri en fazla bir dakika önbelleğe alınır.
+- Masaüstünde sol filtre sütunu, mobilde marka seçici ve açılır filtre paneli bulunur.
+- Stok filtresi Shopify'ın satışa açıklık bilgisini kullanır; bu fiziksel depo adedi değildir.
+- Fiyat aralığı Shopify fiyatına değil, burada belirlenmiş özel katalog fiyatına uygulanır. Fiyatsız ürünler bu aralığa dahil edilmez.
+- Ürün detayında marka, tür, barkod ve açıklama ayrıdır. Adet seçilerek talep sepetine eklenir; bu işlem ödeme veya kesin sipariş oluşturmaz.
+- Shopify'ın etiket seçenek sınırına ulaşıldığında aramayı daraltma uyarısı gösterilir. Çok seyrek fiyat/stok eşleşmelerinde boş bir sayfadan sonra taranacak sayfa kalabilir.
+
+## Excel fiyatları
+
+- Yönetimdeki Excel şablonu varyasyon kimliği, ürün adı, metin biçiminde barkod, mevcut ve yeni TL fiyatını içerir.
+- Yalnızca “Yeni fiyat (TL)” değiştirilir. Boş fiyat atlanır, sıfır geçerlidir; ürün bilgileri yazılmaz.
+- En fazla 5.000 satır ve 5 MB dosya kabul edilir. Açılmış içerik 32 MB ile sınırlandırılır; formüller, tekrar eden kimlikler ve bozuk arşivler reddedilir.
+- Dosya önce önizlenir; açık onaydan sonra 100'er satırlık gruplarla uygulanır. Başarılı kayıtlar korunur, kalanlar yeniden denenebilir. İşlem sırasında yönetim sayfası açık kalmalıdır.
+- Tekil fiyat düzenlemesinde boş bırakıp kaydetmek fiyatı kaldırır; bu davranış Excel'deki “boşu atla”dan farklıdır.
+
+Fiyat aralığı aramaları için Netlify'da yalnızca fiyatların sürüm kontrollü bir önbelleği tutulur. Asıl varyasyon fiyatları korunur; ilk okumadan sonra yalnız değişen fiyatlar yeniden okunur. Bu bir ürün veritabanı değildir.
+
+## Toplu yönetim
+
+- Marka, ürün türü ve etiketle yönetim listesini daraltın. Seçim birimi satırdaki Shopify varyasyonudur.
+- “Bu sayfayı seç” yalnız görünen sayfayı; “Tüm eşleşenleri seç” filtreye uyan tüm sayfaları tarar. Seçim 5.000 satırla sınırlıdır; filtre değişince temizlenir.
+- Seçili fiyatlara yüzde artış/indirim, sabit tutar ekleme/çıkarma veya aynı fiyatı verme uygulanabilir. Önce eski–yeni fiyatları kontrol edin; açık onay olmadan kaydedilmez.
+- Fiyatı olmayanlar yüzde veya tutar işlemlerinde atlanır. Aynı fiyatı verme işlemiyle fiyatlandırılabilir. Negatif sonuçlar reddedilir.
+- Katalogda gösterme/gizleme tek satıra veya seçili gruba uygulanır; önce değişecek kayıt sayısı ve liste gösterilir. Fiyatları değiştirmez.
+- Excel ve toplu işlemler kaydedilirken diğer yönetim değişiklikleri kilitlenir. Sayfayı işlem bitene kadar açık tutun; başarılı gruplar korunur ve kalanlar yeniden denenebilir.
+- Yalnız Shopify’da yayınlı ürünler kapsam dahilindedir. Taslak ve arşivlenmiş ürünler bu Storefront bağlantısında okunmaz; Shopify Admin bağlantısı veya yazma izni kullanılmaz.
+
+## Yerel çalıştırma
 
 Node.js 22.13 veya üzeri gerekir.
 
 1. `npm ci`
-2. `.env.example` dosyasını `.env.local` adıyla kopyalayın ve değerleri doldurun. Gerçek anahtarları Git'e eklemeyin.
-3. `npm run db:migrate`
-4. `npm run user:create` — ilk firma sahibi hesabını interaktif oluşturur. Parola komut satırı argümanı değildir.
-5. `npm run dev`
+2. `.env.example` dosyasını `.env.local` olarak kopyalayıp değerleri doldurun.
+3. `npm run dev`
+4. `http://localhost:3000` adresini açın.
 
-Yerelde dosya tabanlı veritabanı kullanılabilir. Yayında **kullanılamaz**: sunucusuz dosya sistemi kalıcı değildir. Uygulama üretimde `file:` veritabanını reddeder.
+Yerel geliştirmede özel fiyatlar `.local/prices.json`, katalog onayları `.local/visibility.json` dosyasına yazılır. Bu dosyalar Git'e girmez. Netlify'da aynı kod otomatik olarak Netlify Blobs kullanır.
 
-Testler: `npm test`. Üretim derlemesi: `npm run build`.
+GitHub'a kod göndermek yerel fiyatları, katalog seçimlerini veya gizli ayarları canlıya taşımaz. Bunlar ortamlar arasında ayrıdır. Canlı katalogda fiyat ve yayın seçimi yönetici girişiyle yapılır; Excel fiyat aktarımı da kullanılabilir.
 
-## Netlify'a yayınlama
+## Yönetici parolası
 
-1. Kaynak kodunu size ait tercihen özel GitHub deposuna aktarın. `.env.local`, `.local`, `.next` ve `node_modules` dahil edilmemeli.
-2. Kalıcı, SQLite FTS5 destekli libSQL veritabanını seçin. Bu, barındırmadan ayrı bir gereksinimdir; servis açma ve maliyet kararı henüz verilmedi. Netlify'ın Postgres veritabanı bu adaptörle doğrudan uyumlu değildir.
-3. Netlify'da depoyu bağlayın; proje alt klasördeyse bu klasörü Base directory seçin. Derleme ve zamanlama ayarları `netlify.toml` içindedir.
-4. Netlify üretim ortamına `.env.example` alanlarını girin. `APP_URL` gerçek HTTPS alan adı olmalı. `DATABASE_URL` uzak libSQL adresi, `DATABASE_AUTH_TOKEN` veritabanı erişim anahtarıdır. `SHOPIFY_TOKEN_KEY` rastgele 32 baytın base64 karşılığı, `CRON_SECRET` ondan farklı en az 32 karakterlik rastgele sır olmalı. Anahtarları tarayıcıya açan `NEXT_PUBLIC_` öneki kullanmayın.
-5. Önce `SYNC_ENABLED=false` ile yayınlayın. Ayrı önizlemelere üretim veritabanı veya anahtarlarını vermeyin.
-6. Güvenilir yerel ortamdan üretim veritabanına `db:migrate` ve `user:create` çalıştırın. Migrasyonlar derleme sırasında otomatik çalıştırılmaz.
-7. Giriş, yetkisiz erişim engeli ve veritabanı bağlantısı doğrulandıktan sonra üretimde `SYNC_ENABLED=true` yapıp yeniden yayınlayın.
-8. Shopify uygulamasında `read_products` ve `read_inventory` izinlerini sağlayın. Yönetim panelindeki Shopify bağlantısına istemci kimliği/gizli anahtarı güvenli alandan girin. Bağlantı doğrulanınca ilk tarama ve bildirim abonelikleri otomatik kuyruğa alınır.
-9. Netlify Functions ekranında `catalog-sync` görevinin Scheduled olarak göründüğünü, sonraki çalışmasını ve günlüklerini doğrulayın. İlk çalışmayı Run now ile sınayın. Önizleme dağıtımlarında zamanlama otomatik çalışmaz.
+`npm run password:hash` komutu parolayı ekranda göstermeden sorar ve yalnızca hash değerini üretir. Düz parolayı Git'e veya Netlify ortam değişkenlerine koymayın.
 
-`SHOPIFY_TOKEN_KEY` değişirse kaydedilmiş Shopify kimlik bilgileri çözülemez; plansız değiştirmeyin. Veritabanı yedeklerini ve anahtarı güvenli, ayrı yerlerde saklayın.
+## Netlify ortam değişkenleri
 
-## Eşitleme nasıl çalışır?
+- `SHOPIFY_SHOP_DOMAIN`: `dx0nin-1q.myshopify.com`
+- `ADMIN_EMAIL`: fiyat yönetimi hesabı
+- `ADMIN_PASSWORD_HASH`: `npm run password:hash` çıktısı
+- `SESSION_SECRET`: en az 32 karakterlik rastgele gizli değer
+- `APP_URL`: canlı HTTPS adresi
 
-- Shopify'ın imzalı bildirimi doğrulanır ve kalıcı kuyruğa kaydedilir. Ardından kısa işleme denemesi yapılır.
-- Netlify zamanlanmış görevi her dakika kuyruğu çalıştırır; başarısız işler yeniden denenir. Sekmenin açık olması gerekmez.
-- Değişen ürün kontrolü ilk tam taramadan bağımsızdır. Yeni değişikliklere ilk aktarım kuyruğundan yüksek öncelik verilir.
-- İlk tarama, varyasyon sayısına ve Shopify hız sınırına göre zaman alır. Dakikalık tetikleme, tüm ürünlerin bir dakikada geleceği garantisi değildir.
-- Günlük tam tarama kaçırılmış/silinmiş ürünleri yeniden kontrol eder. Tekrarlanan veya sırası değişmiş bildirimlerde Shopify'daki güncel kaynak tekrar okunur.
-- Fiyat ve görünürlük korunur. Ürün ve varyasyon sayıları ayrı gösterilir.
+Storefront sorgusu herkese açık yayınlanmış kataloğu okuduğu için Shopify yönetici istemci kimliği veya gizli anahtarı bu sürümde kullanılmaz.
 
-## Yayın öncesi kabul listesi
+Gizli değişkenler Netlify'ın güvenli ortam ayarlarına girilir ve sunucu işlevlerine açık olmalıdır; `netlify.toml` içine yazılmaz. Netlify'ın [çalışma zamanı değişkenleri belgesi](https://docs.netlify.com/build/functions/environment-variables/#netlify-read-only-variables) bu ayrımı açıklar.
 
-- [ ] Mevcut canlı katalogdan fiyat/görünürlük, ekip ve sipariş verileri için ayrı yedekleme ve taşıma planı onaylandı. Yeni veritabanı boş başlayacaktır; otomatik eski veri taşıması yapılmaz.
-- [ ] Yetkisiz kullanıcı yönetim API'lerine erişemiyor; sadece menü gizleme kullanılmıyor.
-- [ ] Sahip dahil kullanıcılar ürün adını/açıklamasını değiştiremiyor; Excel de bu sınırı koruyor.
-- [ ] Shopify'da oluşturulan test ürünü tarayıcı kapalıyken yönetimde gizli/fiyatsız görünüyor.
-- [ ] Açıklama, görsel ve stok güncelleniyor; katalog fiyatı korunuyor.
-- [ ] Silinen ürün arşivleniyor; tekrar bildirim ürün çoğaltmıyor.
-- [ ] Tüm varyasyon sayfaları geliyor; ürün ve varyasyon sayıları ayrı karşılaştırılıyor.
-- [ ] Kesinti sonrası görev devam ediyor; scheduler durursa panelde eski çalışma zamanı fark ediliyor.
-- [ ] Excel indir/düzenle/yükle ve çalışan sipariş/WhatsApp/yazdır akışları gerçek tarayıcıda doğrulandı.
-- [ ] Mobil görünüm, düşük hızlı bağlantı, kota takibi ve yedek geri yükleme denendi.
+## Kontroller
 
-## Plan ve maliyet sınırları
+- `npm test`
+- `npm run lint`
+- `npm run build`
 
-Netlify zamanlanmış görevleri tüm planlarda destekler; görev başına süre sınırı 30 saniyedir. Bu projede zamanlanmış işleyici kısa bir sunucu görevini çağırır; uzun aktarım parçalar halinde ilerler. Ücretsiz plan sınırsız değildir. Yayın, trafik, işlem ve veritabanı tüketimi ölçülmeden sürekli ücretsiz çalışma vaat edilmez. Ücretli plan veya otomatik ek bakiye ayrıca onaylanmalıdır.
-
-- [Netlify zamanlanmış görevler](https://docs.netlify.com/build/functions/scheduled-functions/)
-- [Netlify güncel fiyatlandırma](https://www.netlify.com/pricing/)
-
-Vercel dosyaları yalnızca ileride taşınabilirlik için örnektir; seçilen hedef Netlify'dır.
+Yayından sonra katalog araması, mobil görünüm, sepete ekleme, WhatsApp metni, yönetici girişi ve özel fiyat kaydetme canlı ortamda yeniden kontrol edilmelidir.

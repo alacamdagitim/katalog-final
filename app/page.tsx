@@ -1,11 +1,9 @@
 import CustomerCatalog from './customer-catalog';
-import {customerCatalog} from '@/lib/customer-catalog';
-import {currentMember,HttpError,has} from '@/lib/server';
-import {getChatGPTUser,chatGPTSignInPath} from './chatgpt-auth';
+import {publicCatalog,type CatalogPage} from '@/lib/live-catalog';
 export const dynamic='force-dynamic';
 export default async function Home(){
- const identity=await getChatGPTUser();let employee=false,canSync=false;
- if(identity){try{const member=await currentMember();employee=true;canSync=has(member,'shopify.sync');}catch(e){if(!(e instanceof HttpError)||e.status!==403)throw e;}}
- const initial=await customerCatalog(new URLSearchParams());
- return <CustomerCatalog initial={initial} employee={employee} canSync={canSync} signedIn={!!identity} signInPath={chatGPTSignInPath('/yonetim')}/>;
+ let initial:CatalogPage,error='';
+ try{initial=await publicCatalog(new URLSearchParams())}
+ catch{initial={items:[],cursor:null,hasNextPage:false,vendors:[],types:[]};error='Katalog şu anda yüklenemedi.'}
+ return <CustomerCatalog initial={initial} initialError={error}/>;
 }
