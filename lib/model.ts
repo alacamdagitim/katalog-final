@@ -1,8 +1,1 @@
-export type Product={id:string;shopifyProductId:string|null;shopifyVariantId:string|null;handle:string;title:string;vendor:string;type:string;tags:string;description:string;sku:string;barcode:string;catalogPrice:number|null;stock:number|null;visible:number;status:string;image:string;source:string;version:number;search?:string;raw?:string};
-export const permissions=['catalog.edit','prices.edit','excel.export','excel.import','users.manage','history.view','shopify.sync','orders.create','orders.view_all','orders.record_approval'] as const;
-export const permissionLabels:Record<string,string>={'products.edit':'Ürün bilgilerini düzenle','catalog.edit':'Katalog ürünlerini seç','prices.edit':'Katalog fiyatlarını düzenle','excel.export':'Excel indir','excel.import':'Excel yükle','users.manage':'Ekibi yönet','history.view':'İşlem geçmişini gör','shopify.sync':'Shopify verilerini al'};
-Object.assign(permissionLabels,{'orders.create':'Sepet ve kendi siparişlerini yönet','orders.view_all':'Tüm çalışanların siparişlerini gör ve yönet','orders.record_approval':'Müşteri yanıtını / onayını kaydet'});
-export type Member={id:string;email:string;name:string;role:string;permissions:string[];active:number};
-export type ProductPage={items:Product[];total:number;page:number;pages:number;stats:{total:number;visible:number;missing:number};vendors:string[];types:string[]};
 export const money=(n:number|null)=>n===null?'Fiyat girilmedi':new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(n/100);
-export const normalize=(s:string)=>s.toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i');
